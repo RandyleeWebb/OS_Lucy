@@ -1,0 +1,25 @@
+[
+  {
+    "name": "stream",
+    "description": "Stream live audio via Icecast",
+    "endpoint": "http://localhost:8000/lucy.mp3"
+  },
+  {
+    "name": "generate_skit",
+    "description": "Create multi‑speaker dialogue skit",
+    "service": "generator",
+    "endpoint": "/skit"
+  },
+  {
+    "name": "generate_song",
+    "description": "Create a full song from lyrics",
+    "service": "generator",
+    "endpoint": "/song"
+  },
+  {
+    "name": "mix",
+    "description": "Programmatic side‑chain mixing",
+    "service": "generator",
+    "endpoint": "/mix"
+  }
+]

@@ -35,7 +35,28 @@ Read on for diagrams, a quick demo, technical depth, and how to contribute.
 ---
 
 🌐 Quick architecture (ASCII visual)
-
+┌─────────────────────────────┐
+│         Lucy OS             │
+│ Voice • UI • Workflows      │
+└──────────────┬──────────────┘
+               │
+┌──────────────▼──────────────┐
+│        E.M.M.A Kernel       │
+│ Agents • Governance         │
+│ Recovery • Telemetry        │
+└──────────────┬──────────────┘
+               │
+┌──────────────▼──────────────┐
+│ Sovereign Execution Plane   │
+│ Decision Tokens             │
+│ Audit Receipts              │
+│ Execution Permits           │
+└──────────────┬──────────────┘
+               │
+┌──────────────▼──────────────┐
+│ Trusted Executor            │
+│ WASM • Sandbox              │
+└─────────────────────────────┘
 ```
 				+------------------+      DecisionToken      +-------------+
  Client/Agent → |    Orchestrator  | ─────────────────────────▶ | SafeGuard   |

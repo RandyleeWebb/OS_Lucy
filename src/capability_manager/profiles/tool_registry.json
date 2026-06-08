@@ -1,0 +1,18 @@
+{
+  "agent_name": "tool_registry",
+  "capabilities": [
+    {
+      "action": "read_file",
+      "resource_pattern": "/app/src/tool_registry/**"
+    },
+    {
+      "action": "write_file",
+      "resource_pattern": "/app/src/tool_registry/**"
+    },
+    {
+      "action": "publish_event",
+      "resource_pattern": "*"
+    }
+  ],
+  "max_concurrent_ops": 3
+}

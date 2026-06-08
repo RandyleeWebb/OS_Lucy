@@ -1,0 +1,4 @@
+fastapi
+uvicorn[standard]
+httpx
+redis>=4.6.0

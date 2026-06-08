@@ -1,0 +1,18 @@
+{
+  "agent_name": "scheduler",
+  "capabilities": [
+    {
+      "action": "read_file",
+      "resource_pattern": "/app/src/scheduler/**"
+    },
+    {
+      "action": "write_file",
+      "resource_pattern": "/app/src/scheduler/**"
+    },
+    {
+      "action": "publish_event",
+      "resource_pattern": "*"
+    }
+  ],
+  "max_concurrent_ops": 5
+}

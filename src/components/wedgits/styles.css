@@ -1,0 +1,18 @@
+.agent-wedgit{background:#222;color:#fff;padding:12;border-radius:6px;min-width:120px;min-height:56px;display:inline-block;position:relative;border:2px solid transparent}
+.agent-wedgit.replicated{box-shadow:0 0 12px rgba(34,197,94,0.16)}
+.agent-wedgit.locked{border-color:#06f}
+.agent-wedgit.alert{border-color:#f33}
+.replication-dock{background:#111;color:#eee;border-radius:6px}
+.analyzer-wedgit{background:#121212;color:#fff;border-radius:6px}
+.safeguard-injector{background:#0b2a4a;color:#fff;border-radius:6px}
+
+.agent-tooltip{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(100% + 8px);background:rgba(0,0,0,0.85);color:#fff;padding:6px 8px;border-radius:6px;font-size:12px;white-space:nowrap;box-shadow:0 6px 18px rgba(0,0,0,0.5);z-index:60}
+.agent-tooltip .muted{display:block;color:#cbd5e1;font-size:11px;margin-top:4px}
+
+.replication-glow{box-shadow:0 0 24px rgba(99,102,241,0.45);animation:replicatePulse 1s ease-in-out}
+/* Ensure replication glow style is preserved (no-op update) */
+@keyframes replicatePulse{0%{box-shadow:0 0 0 rgba(99,102,241,0.0)}50%{box-shadow:0 0 24px rgba(99,102,241,0.45)}100%{box-shadow:0 0 0 rgba(99,102,241,0.0)}}
+
+.clones-container{position:relative;display:flex;gap:8px;align-items:center}
+.clone-item{transform:translateY(-10px);transition:transform 200ms ease, opacity 200ms ease}
+.clone-item.enter{transform:translateY(0);opacity:1}

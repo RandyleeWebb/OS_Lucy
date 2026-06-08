@@ -1,0 +1,18 @@
+{
+  "agent_name": "planner",
+  "capabilities": [
+    {
+      "action": "read_file",
+      "resource_pattern": "/app/src/planner/**"
+    },
+    {
+      "action": "write_file",
+      "resource_pattern": "/app/src/planner/**"
+    },
+    {
+      "action": "publish_event",
+      "resource_pattern": "*"
+    }
+  ],
+  "max_concurrent_ops": 5
+}

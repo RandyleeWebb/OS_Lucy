@@ -1,0 +1,22 @@
+{
+  "agent_name": "worker",
+  "capabilities": [
+    {
+      "action": "read_file",
+      "resource_pattern": "/app/src/worker/**"
+    },
+    {
+      "action": "write_file",
+      "resource_pattern": "/app/src/worker/**"
+    },
+    {
+      "action": "publish_event",
+      "resource_pattern": "*"
+    },
+    {
+      "action": "run_tests",
+      "resource_pattern": "/app/**"
+    }
+  ],
+  "max_concurrent_ops": 10
+}

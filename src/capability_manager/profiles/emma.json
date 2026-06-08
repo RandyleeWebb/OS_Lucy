@@ -1,0 +1,23 @@
+{
+  "agent_name": "emma",
+  "capabilities": [
+    {
+      "action": "read_file",
+      "resource_pattern": "/app/**"
+    },
+    {
+      "action": "approve_diff",
+      "resource_pattern": "/app/src/self_extension/proposals/**"
+    },
+    {
+      "action": "publish_event",
+      "resource_pattern": "*"
+    },
+    {
+      "action": "call_llm",
+      "resource_pattern": "*",
+      "allow_network": false
+    }
+  ],
+  "max_concurrent_ops": 5
+}

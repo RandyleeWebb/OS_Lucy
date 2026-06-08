@@ -1,0 +1,23 @@
+{
+  "agent_name": "api",
+  "capabilities": [
+    {
+      "action": "read_file",
+      "resource_pattern": "/app/src/api/**"
+    },
+    {
+      "action": "write_file",
+      "resource_pattern": "/app/src/api/**"
+    },
+    {
+      "action": "publish_event",
+      "resource_pattern": "*"
+    },
+    {
+      "action": "call_llm",
+      "resource_pattern": "*",
+      "allow_network": true
+    }
+  ],
+  "max_concurrent_ops": 10
+}

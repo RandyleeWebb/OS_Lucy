@@ -1,0 +1,26 @@
+{
+  "agent_name": "self_extension",
+  "capabilities": [
+    {
+      "action": "read_file",
+      "resource_pattern": "/app/src/self_extension/**"
+    },
+    {
+      "action": "write_file",
+      "resource_pattern": "/app/src/self_extension/**"
+    },
+    {
+      "action": "propose_diff",
+      "resource_pattern": "/app/src/**"
+    },
+    {
+      "action": "run_tests",
+      "resource_pattern": "/app/**"
+    },
+    {
+      "action": "publish_event",
+      "resource_pattern": "*"
+    }
+  ],
+  "max_concurrent_ops": 3
+}

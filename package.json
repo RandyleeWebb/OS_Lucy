@@ -19,7 +19,7 @@
     "better-sqlite3": "^8.1.0",
     "axios": "^1.7.2",
     "sqlite3": "^5.1.6",
-    "electron": "^28.0.0"
+    "electron": "^39.8.5"
   },
   "devDependencies": {
     "typescript": "^5.4.5"

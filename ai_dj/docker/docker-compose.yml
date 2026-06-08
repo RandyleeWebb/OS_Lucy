@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  navidrome:
+    image: ghcr.io/navidrome/navidrome:latest
+    container_name: navidrome
+    restart: unless-stopped
+    ports:
+      - "4533:4533"
+    environment:
+      - ND_LOGLEVEL=info
+      - ND_SCANINTERVAL=300
+      - ND_SESSIONTIMEOUT=86400
+      - ND_BASEURL=/
+      - ND_DATAFOLDER=/data
+      - ND_MUSICFOLDER=/music
+      # Admin credentials – replace with your custom values
+      - ND_USERNAME=${NAVIDROME_USERNAME:-admin}
+      - ND_PASSWORD=${NAVIDROME_PASSWORD:-admin}
+    volumes:
+      - ./navidrome/data:/data
+      - ./navidrome/music:/music
+    networks:
+      - lucy-net
+
+  icecast:
+    image: infiniteproject/icecast:latest
+    container_name: icecast
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - ICECAST_SOURCE_PASSWORD=sourcepass
+      - ICECAST_RELAY_PASSWORD=relaypass
+      - ICECAST_ADMIN_PASSWORD=adminpass
+    volumes:
+      - ./icecast/config:/etc/icecast2
+    networks:
+      - lucy-net
+
+networks:
+  lucy-net:
+    driver: bridge

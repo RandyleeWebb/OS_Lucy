@@ -1,4 +1,6 @@
 # Lucy — The Sovereign AI Orchestrator
+<img width="850" height="507" alt="lucyos3" src="https://github.com/user-attachments/assets/94177923-5820-47d5-b415-fc361e0804cf" /><img width="980" height="653" alt="oslucy2" src="https://github.com/user-attachments/assets/2353b8b2-5216-44da-88df-c763277341c1" />
+<img width="974" height="585" alt="oslucy" src="https://github.com/user-attachments/assets/9b08a50a-08cc-4a09-842b-1c7800ac97f7" />
 
 ![Sovereign-Ready](https://img.shields.io/badge/Sovereign--Ready-brightgreen)
 ![QC-Verified](https://img.shields.io/badge/QC--Verified-blue)
@@ -40,6 +42,7 @@ Read on for diagrams, a quick demo, technical depth, and how to contribute.
 │ Voice • UI • Workflows      │
 └──────────────┬──────────────┘
                │
+
 ┌──────────────▼──────────────┐
 │        E.M.M.A Kernel       │
 │ Agents • Governance         │

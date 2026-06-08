@@ -58,7 +58,7 @@ Architecture summary: Authenticated client → Orchestrator (auth + policy) → 
 
 ---
 
-📣 SEO-friendly summary (copy for social)
+📣 SEO-friendly summary ([@scottymicfree x][Randy Webb @scottymicfree linkedin](https://github.com/scottymicfree))
 
 Lucy is an open-source sovereign AI orchestration system that implements zero-trust architecture, cryptographic verification, audit logging, WASM sandboxing, and mutation-tested QC pipelines. It is built for distributed systems, resilience engineering, and secure execution pipelines.
 

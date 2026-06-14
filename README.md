@@ -14,7 +14,7 @@ Lucy runs inside her own virtual desktop, so Windows can’t drop files directly
 ![Coverage](https://img.shields.io/badge/coverage-⚠️-yellow)
 ![Mutation Score](https://img.shields.io/badge/mutation--score-100%25-green)
 
-Tagline: Bold orchestration for sovereign AI — cryptographically-verified, zero-trust, WASM-sandboxed execution.
+orchestration for sovereign AI — cryptographically-verified, zero-trust, WASM-sandboxed execution.
 
 ---
 

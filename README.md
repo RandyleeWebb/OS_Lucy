@@ -1,6 +1,6 @@
 # Lucy — The Sovereign AI Orchestrator
 
-⭐ One‑Sentence Version (use this in docs)
+⭐ One‑Sentence Version
 Lucy runs inside her own virtual desktop, so Windows can’t drop files directly into her environment — Electron captures the drop event and Lucy imports the file into her internal library.
 <img width="850" height="507" alt="lucyos3" src="https://github.com/user-attachments/assets/94177923-5820-47d5-b415-fc361e0804cf" />
 

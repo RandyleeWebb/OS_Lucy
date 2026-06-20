@@ -1,0 +1,5 @@
+{
+  "name": "Alpha Matrix Engine (AME)",
+  "description": "Next-generation high-performance game engine editor with 8K rendering pipeline simulation and multi-layer world composition.",
+  "requestFramePermissions": []
+}

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lucy OS - AME Integration Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #0b0f19;
+            color: #f3f4f6;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            height: 95vh;
+        }
+        header {
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        h1 {
+            font-size: 1.25rem;
+            margin: 0;
+            color: #8b5cf6;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            background-color: #8b5cf6;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 6px;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background-color: #7c3aed;
+        }
+        #viewport-container {
+            flex: 1;
+            border: 1px solid #1f2937;
+            border-radius: 8px;
+            overflow: hidden;
+            background-color: #000;
+        }
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        #output {
+            margin-top: 15px;
+            background-color: #111827;
+            border: 1px solid #1f2937;
+            border-radius: 6px;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            height: 80px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Lucy OS Sandbox Container</h1>
+        <div class="controls">
+            <button onclick="spawnEntity()">Spawn Entity (Spatial Payload)</button>
+            <button onclick="queryWorld()">Query World State</button>
+            <button onclick="toggleRaytracing()">Toggle Raytracing</button>
+        </div>
+    </header>
+
+    <div id="viewport-container">
+        <iframe id="ame-iframe" src="http://localhost:3005"></iframe>
+    </div>
+
+    <div id="output">
+        [Lucy OS Container] Ready. Waiting for interactions...
+    </div>
+
+    <script>
+        const iframe = document.getElementById('ame-iframe');
+        const output = document.getElementById('output');
+
+        function log(msg) {
+            output.innerHTML += `<br>[Container] ${msg}`;
+            output.scrollTop = output.scrollHeight;
+        }
+
+        window.addEventListener('message', (event) => {
+            if (event.origin !== 'http://localhost:3005') return;
+            log(`Received event: ${JSON.stringify(event.data)}`);
+        });
+
+        function sendCommand(command, payload) {
+            log(`Sending command: ${command} with payload: ${JSON.stringify(payload)}`);
+            iframe.contentWindow.postMessage({ command, payload }, 'http://localhost:3005');
+        }
+
+        function spawnEntity() {
+            sendCommand('SPAWN_ENTITY', {
+                id: 'NPC_Lucy_Vessel_' + Math.floor(Math.random() * 100),
+                type: 'Ped',
+                coords: { x: 10.5, y: -2.3, z: 1.0 }
+            });
+        }
+
+        function queryWorld() {
+            sendCommand('QUERY_WORLD', {});
+        }
+
+        function toggleRaytracing() {
+            sendCommand('TOGGLE_RAYTRACING', { enabled: true });
+        }
+    </script>
+</body>
+</html>

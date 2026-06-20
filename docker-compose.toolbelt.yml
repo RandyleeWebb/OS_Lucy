@@ -1,0 +1,22 @@
+version: '3.8'
+services:
+  toolbelt:
+	build:
+	  context: ./src/toolbelt
+	  dockerfile: Dockerfile
+	ports:
+	  - "8001:8001"
+	volumes:
+	  - ./src/logs:/app/../logs
+	environment:
+	  - PORT=8001
+  electron:
+	build:
+	  context: ./src/electron_app
+	  dockerfile: Dockerfile
+	ports:
+	  - "3000:3000"
+	depends_on:
+	  - toolbelt
+	environment:
+	  - NODE_ENV=development

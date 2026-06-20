@@ -1,0 +1,1 @@
+Hello from Lucy Core! If you are reading this, Helix successfully executed an fs_write command on the host machine. Phase 1 is a success.

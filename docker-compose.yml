@@ -1,0 +1,1118 @@
+version: "3.9"
+
+networks:
+  lucy_net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  minio_data:
+  qdrant_data:
+  redis_data:
+  lucy_logs:
+  datavault_data:
+
+services:
+  # ===== LAYER 1: Core Infrastructure =====
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - lucy_net
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_PASSWORD=postgres
+    networks:
+      - lucy_net
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    command: server /data
+    ports:
+      - "9000:9000"
+    networks:
+      - lucy_net
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: qdrant
+    ports:
+      - "6333:6333"
+    networks:
+      - lucy_net
+    volumes:
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  nats:
+    image: nats:latest
+    container_name: nats
+    ports:
+      - "4222:4222"
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8222/varz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9090/-/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/version"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # ===== LAYER 2: Policy & Vault Foundation =====
+  policy_engine:
+    build: ./Code/safeguard/policy_engine
+    image: lucy/policy_engine:dev
+    container_name: policy_engine
+    ports:
+      - "8500:8500"
+    environment:
+      - PORT=8500
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8500/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  ledger:
+    build: ./Code/datavault/ledger
+    image: lucy/ledger:dev
+    container_name: ledger
+    ports:
+      - "8600:8600"
+    environment:
+      - PORT=8600
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8600/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    volumes:
+      - datavault_data:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  vault_api:
+    build: ./Code/datavault/vault_api
+    image: lucy/vault_api:dev
+    container_name: vault_api
+    ports:
+      - "8604:8604"
+    environment:
+      - PORT=8604
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8604/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      ledger:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ===== LAYER 3: Executor & Memory Systems =====
+  executor_api:
+    build: ./Code/trusted_executor/executor_api
+    image: lucy/executor_api:dev
+    container_name: executor_api
+    ports:
+      - "8403:8403"
+    environment:
+      - PORT=8403
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8403/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      vault_api:
+        condition: service_healthy
+
+  entity_extractor:
+    build: ./Code/memory/entity_extractor
+    image: lucy/entity_extractor:dev
+    container_name: entity_extractor
+    ports:
+      - "8300:8300"
+    environment:
+      - PORT=8300
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8300/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  graph_engine:
+    build: ./Code/memory/graph_engine
+    image: lucy/graph_engine:dev
+    container_name: graph_engine
+    ports:
+      - "8301:8301"
+    environment:
+      - PORT=8301
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8301/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      qdrant:
+        condition: service_healthy
+
+  memory_engine:
+    build: ./Code/memory/memory_engine
+    image: lucy/memory_engine:dev
+    container_name: memory_engine
+    ports:
+      - "8305:8305"
+    environment:
+      - PORT=8305
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8305/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      entity_extractor:
+        condition: service_healthy
+      graph_engine:
+        condition: service_healthy
+
+  # ===== LAYER 4: Core Orchestration =====
+  orchestrator:
+    build: ./Code/orchestrator
+    image: lucy/orchestrator:dev
+    container_name: orchestrator
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+      policy_engine:
+        condition: service_healthy
+      vault_api:
+        condition: service_healthy
+      executor_api:
+        condition: service_healthy
+      memory_engine:
+        condition: service_healthy
+
+  registry:
+    build: ./Code/registry
+    image: lucy/registry:dev
+    container_name: registry
+    ports:
+      - "8100:8100"
+    environment:
+      - PORT=8100
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8100/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  message-bus:
+    build: ./Code/message-bus
+    image: lucy/message-bus:dev
+    container_name: message-bus
+    ports:
+      - "8103:8103"
+    environment:
+      - PORT=8103
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8103/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      nats:
+        condition: service_healthy
+
+  # ===== LAYER 5: Services & Utilities =====
+  sentinel:
+    build: ./Code/sentinel
+    image: lucy/sentinel:dev
+    container_name: sentinel
+    ports:
+      - "8101:8101"
+    environment:
+      - PORT=8101
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8101/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      orchestrator:
+        condition: service_healthy
+
+  scout:
+    build: ./Code/scout
+    image: lucy/scout:dev
+    container_name: scout
+    ports:
+      - "8102:8102"
+    environment:
+      - PORT=8102
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8102/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      orchestrator:
+        condition: service_healthy
+
+  vector-store:
+    build: ./Code/vector-store
+    image: lucy/vector-store:dev
+    container_name: vector-store
+    ports:
+      - "8200:8200"
+    environment:
+      - PORT=8200
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8200/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      qdrant:
+        condition: service_healthy
+
+  object-storage:
+    build: ./Code/object-storage
+    image: lucy/object-storage:dev
+    container_name: object-storage
+    ports:
+      - "8201:8201"
+    environment:
+      - PORT=8201
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8201/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      minio:
+        condition: service_healthy
+
+  ollama_service:
+    build: ./Code/ollama
+    image: lucy/ollama_service:dev
+    container_name: ollama_service
+    ports:
+      - "8202:8202"
+    environment:
+      - PORT=8202
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8202/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    depends_on:
+      ollama:
+        condition: service_healthy
+
+  embedding:
+    build: ./Code/memory/embedding
+    image: lucy/embedding:dev
+    container_name: embedding
+    ports:
+      - "8302:8302"
+    environment:
+      - PORT=8302
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8302/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      ollama_service:
+        condition: service_healthy
+
+  pruning:
+    build: ./Code/memory/pruning
+    image: lucy/pruning:dev
+    container_name: pruning
+    ports:
+      - "8303:8303"
+    environment:
+      - PORT=8303
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8303/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      memory_engine:
+        condition: service_healthy
+
+  retrieval:
+    build: ./Code/memory/retrieval
+    image: lucy/retrieval:dev
+    container_name: retrieval
+    ports:
+      - "8304:8304"
+    environment:
+      - PORT=8304
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8304/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      memory_engine:
+        condition: service_healthy
+
+  episodic-db:
+    build: ./Code/memory/episodic-db
+    image: lucy/episodic-db:dev
+    container_name: episodic-db
+    ports:
+      - "8306:8306"
+    environment:
+      - PORT=8306
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8306/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  datavault:
+    build: ./Code/memory/datavault
+    image: lucy/datavault:dev
+    container_name: datavault
+    ports:
+      - "8307:8307"
+    environment:
+      - PORT=8307
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8307/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    volumes:
+      - datavault_data:/data
+    depends_on:
+      vault_api:
+        condition: service_healthy
+
+  # ===== LAYER 6: Advanced Systems =====
+  cognition_loop:
+    build: ./Code/cognition_loop
+    image: lucy/cognition_loop:dev
+    container_name: cognition_loop
+    ports:
+      - "9000:9000"
+    environment:
+      - PORT=9000
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    depends_on:
+      orchestrator:
+        condition: service_healthy
+      policy_engine:
+        condition: service_healthy
+      vault_api:
+        condition: service_healthy
+      executor_api:
+        condition: service_healthy
+
+  lucy_chat:
+    build: ./Code/lucy_chat
+    image: lucy/lucy_chat:dev
+    container_name: lucy_chat
+    ports:
+      - "9001:9001"
+    environment:
+      - PORT=9001
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      cognition_loop:
+        condition: service_healthy
+
+  forge:
+    build: ./Code/forge
+    image: lucy/forge:dev
+    container_name: forge
+    ports:
+      - "9002:9002"
+    environment:
+      - PORT=9002
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9002/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      lucy_chat:
+        condition: service_healthy
+
+  planner:
+    build: ./Code/planner
+    image: lucy/planner:dev
+    container_name: planner
+    ports:
+      - "9003:9003"
+    environment:
+      - PORT=9003
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9003/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      forge:
+        condition: service_healthy
+
+  threat_intel:
+    build: ./Code/threat_intel
+    image: lucy/threat_intel:dev
+    container_name: threat_intel
+    ports:
+      - "9100:9100"
+    environment:
+      - PORT=9100
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9100/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      orchestrator:
+        condition: service_healthy
+
+  aegis:
+    build: ./Code/aegis
+    image: lucy/aegis:dev
+    container_name: aegis
+    ports:
+      - "9101:9101"
+    environment:
+      - PORT=9101
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9101/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      orchestrator:
+        condition: service_healthy
+
+  # ===== LAYER 7: Safeguard & Compliance =====
+  ast_validator:
+    build: ./Code/safeguard/ast_validator
+    image: lucy/ast_validator:dev
+    container_name: ast_validator
+    ports:
+      - "8501:8501"
+    environment:
+      - PORT=8501
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      policy_engine:
+        condition: service_healthy
+
+  cryptographic_rules:
+    build: ./Code/safeguard/cryptographic_rules
+    image: lucy/cryptographic_rules:dev
+    container_name: cryptographic_rules
+    ports:
+      - "8502:8502"
+    environment:
+      - PORT=8502
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8502/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      policy_engine:
+        condition: service_healthy
+
+  gravity_model:
+    build: ./Code/safeguard/gravity_model
+    image: lucy/gravity_model:dev
+    container_name: gravity_model
+    ports:
+      - "8503:8503"
+    environment:
+      - PORT=8503
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8503/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      policy_engine:
+        condition: service_healthy
+
+  merkle_tree:
+    build: ./Code/datavault/merkle_tree
+    image: lucy/merkle_tree:dev
+    container_name: merkle_tree
+    ports:
+      - "8601:8601"
+    environment:
+      - PORT=8601
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8601/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      ledger:
+        condition: service_healthy
+
+  wal:
+    build: ./Code/datavault/wal
+    image: lucy/wal:dev
+    container_name: wal
+    ports:
+      - "8602:8602"
+    environment:
+      - PORT=8602
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8602/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      ledger:
+        condition: service_healthy
+
+  signatures:
+    build: ./Code/datavault/signatures
+    image: lucy/signatures:dev
+    container_name: signatures
+    ports:
+      - "8603:8603"
+    environment:
+      - PORT=8603
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8603/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      ledger:
+        condition: service_healthy
+
+  governance_daemon:
+    build: ./Code/compliance/governance_daemon
+    image: lucy/governance_daemon:dev
+    container_name: governance_daemon
+    ports:
+      - "8900:8900"
+    environment:
+      - PORT=8900
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8900/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      ledger:
+        condition: service_healthy
+      vault_api:
+        condition: service_healthy
+
+  hash_chain_verifier:
+    build: ./Code/compliance/hash_chain_verifier
+    image: lucy/hash_chain_verifier:dev
+    container_name: hash_chain_verifier
+    ports:
+      - "8901:8901"
+    environment:
+      - PORT=8901
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8901/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      ledger:
+        condition: service_healthy
+
+  kill_switch:
+    build: ./Code/compliance/kill_switch
+    image: lucy/kill_switch:dev
+    container_name: kill_switch
+    ports:
+      - "8902:8902"
+    environment:
+      - PORT=8902
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8902/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      governance_daemon:
+        condition: service_healthy
+
+  # ===== LAYER 8: Homeostasis & Observability =====
+  circuit_breakers:
+    build: ./Code/homeostasis/circuit_breakers
+    image: lucy/circuit_breakers:dev
+    container_name: circuit_breakers
+    ports:
+      - "8700:8700"
+    environment:
+      - PORT=8700
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8700/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      orchestrator:
+        condition: service_healthy
+
+  chaos_injector:
+    build: ./Code/homeostasis/chaos_injector
+    image: lucy/chaos_injector:dev
+    container_name: chaos_injector
+    ports:
+      - "8701:8701"
+    environment:
+      - PORT=8701
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8701/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      circuit_breakers:
+        condition: service_healthy
+
+  perfmon:
+    build: ./Code/homeostasis/perfmon
+    image: lucy/perfmon:dev
+    container_name: perfmon
+    ports:
+      - "8702:8702"
+    environment:
+      - PORT=8702
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8702/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      circuit_breakers:
+        condition: service_healthy
+
+  resilience_score:
+    build: ./Code/homeostasis/resilience_score
+    image: lucy/resilience_score:dev
+    container_name: resilience_score
+    ports:
+      - "8703:8703"
+    environment:
+      - PORT=8703
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8703/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      perfmon:
+        condition: service_healthy
+
+  prometheus_exporter:
+    build: ./Code/observability/prometheus_exporter
+    image: lucy/prometheus_exporter:dev
+    container_name: prometheus_exporter
+    ports:
+      - "8800:8800"
+    environment:
+      - PORT=8800
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8800/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      prometheus:
+        condition: service_healthy
+
+  otel_tracing:
+    build: ./Code/observability/otel_tracing
+    image: lucy/otel_tracing:dev
+    container_name: otel_tracing
+    ports:
+      - "8801:8801"
+    environment:
+      - PORT=8801
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8801/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      prometheus_exporter:
+        condition: service_healthy
+
+  structured_logs:
+    build: ./Code/observability/structured_logs
+    image: lucy/structured_logs:dev
+    container_name: structured_logs
+    ports:
+      - "8802:8802"
+    environment:
+      - PORT=8802
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8802/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    volumes:
+      - lucy_logs:/logs
+    depends_on:
+      prometheus_exporter:
+        condition: service_healthy
+
+  # ===== LAYER 9: Terminal Services =====
+  wasm_runtime:
+    build: ./Code/trusted_executor/wasm_runtime
+    image: lucy/wasm_runtime:dev
+    container_name: wasm_runtime
+    ports:
+      - "8400:8400"
+    environment:
+      - PORT=8400
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8400/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      executor_api:
+        condition: service_healthy
+
+  wasm_limits:
+    build: ./Code/trusted_executor/wasm_limits
+    image: lucy/wasm_limits:dev
+    container_name: wasm_limits
+    ports:
+      - "8401:8401"
+    environment:
+      - PORT=8401
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8401/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      wasm_runtime:
+        condition: service_healthy
+
+  wasm_host_functions:
+    build: ./Code/trusted_executor/wasm_host_functions
+    image: lucy/wasm_host_functions:dev
+    container_name: wasm_host_functions
+    ports:
+      - "8402:8402"
+    environment:
+      - PORT=8402
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8402/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      wasm_limits:
+        condition: service_healthy
+
+  archivist:
+    build: ./Code/archivist
+    image: lucy/archivist:dev
+    container_name: archivist
+    ports:
+      - "9200:9200"
+    environment:
+      - PORT=9200
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      orchestrator:
+        condition: service_healthy
+
+  diagnostics_recovery_cortex:
+    build: ./Code/diagnostics_recovery_cortex
+    image: lucy/diagnostics_recovery_cortex:dev
+    container_name: diagnostics_recovery_cortex
+    ports:
+      - "9201:9201"
+    environment:
+      - PORT=9201
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9201/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      archivist:
+        condition: service_healthy

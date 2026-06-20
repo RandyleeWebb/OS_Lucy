@@ -1,0 +1,120 @@
+# Docker Compose extensions for Lucy OS v5
+# New services are defined here and can be merged with the base compose via:
+#   docker compose -f docker-compose.yml -f docker-compose.extra.yml up -d
+
+version: "3.9"
+services:
+  ergonomics_service:
+    build: ./Code/ergonomics
+    image: lucy/ergonomics_service:dev
+    container_name: ergonomics_service
+    ports:
+      - "8001:8000"
+    environment:
+      - PORT=8000
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  productivity_service:
+    build: ./Code/productivity
+    image: lucy/productivity_service:dev
+    container_name: productivity_service
+    ports:
+      - "8002:8000"
+    environment:
+      - PORT=8000
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  delegation_service:
+    build: ./Code/delegation
+    image: lucy/delegation_service:dev
+    container_name: delegation_service
+    ports:
+      - "8003:8000"
+    environment:
+      - PORT=8000
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  prompt_engine_service:
+    build: ./Code/prompt_engine
+    image: lucy/prompt_engine_service:dev
+    container_name: prompt_engine_service
+    ports:
+      - "8004:8000"
+    environment:
+      - PORT=8000
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  host_signal_service:
+    build: ./Code/host_signal
+    image: lucy/host_signal_service:dev
+    container_name: host_signal_service
+    ports:
+      - "8005:8000"
+    environment:
+      - PORT=8000
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  health_exporter:
+    build: ./Code/health_exporter
+    image: lucy/health_exporter:dev
+    container_name: health_exporter
+    ports:
+      - "9091:9090"
+    networks:
+      - lucy_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9090/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s

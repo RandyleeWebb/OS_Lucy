@@ -1,0 +1,32 @@
+{
+  "delegation_policies": {
+    "default": {
+      "delegation_level": 3,
+      "high_stakes_domain": false,
+      "required_human_review": false,
+      "attribution_required": false
+    },
+    "legal": {
+      "delegation_level": 1,
+      "high_stakes_domain": true,
+      "required_human_review": true,
+      "attribution_required": true
+    },
+    "finance": {
+      "delegation_level": 2,
+      "high_stakes_domain": true,
+      "required_human_review": true,
+      "attribution_required": true
+    },
+    "client_facing": {
+      "delegation_level": 2,
+      "high_stakes_domain": true,
+      "required_human_review": true,
+      "attribution_required": true
+    }
+  },
+  "policy": {
+    "allowed_actions": ["read", "write", "execute", "schedule", "delegate"],
+    "forbidden_actions": ["os.system", "subprocess", "eval", "exec", "open", "socket"]
+  }
+}

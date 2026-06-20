@@ -1,259 +1,209 @@
-# Lucy — The Sovereign AI Orchestrator
+# Lucy OS — Local AI Workspace (production-ready)
 
-⭐ One‑Sentence Version
-Lucy runs inside her own virtual desktop, so Windows can’t drop files directly into her environment — Electron captures the drop event and Lucy imports the file into her internal library.
-<img width="850" height="507" alt="lucyos3" src="https://github.com/user-attachments/assets/94177923-5820-47d5-b415-fc361e0804cf" />
+Purpose
+-------
 
-<img width="980" height="653" alt="oslucy2" src="https://github.com/user-attachments/assets/2353b8b2-5216-44da-88df-c763277341c1" />
+Lucy OS is a lightweight, local AI workspace that safely combines a sandboxed cloud browser with a trusted local mirror (Electron + Next.js) and a local toolbelt for deterministic automation, multimodal execution, and live observability. This repository focuses on a secure, local-first architecture: MirrorPanel UI, IPC bridge, toolbelt API (safe stubs + governance), structured logs, and deployment helpers.
 
-<img width="974" height="585" alt="oslucy" src="https://github.com/user-attachments/assets/9b08a50a-08cc-4a09-842b-1c7800ac97f7" />
+Guiding principles
+------------------
 
-![Sovereign-Ready](https://img.shields.io/badge/Sovereign--Ready-brightgreen)
-![QC-Verified](https://img.shields.io/badge/QC--Verified-blue)
-![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
-![Coverage](https://img.shields.io/badge/coverage-⚠️-yellow)
-![Mutation Score](https://img.shields.io/badge/mutation--score-100%25-green)
+- Keep OS integrations opt-in and auditable (FEATURE_OS_INTEGRATION)
+- Log every action as structured JSON with a DecisionToken
+- Prefer IPC via Electron preload; HTTP fallback only for dev
+- Bind production services to localhost by default
 
-orchestration for sovereign AI — cryptographically-verified, zero-trust, WASM-sandboxed execution.
+Repository layout
+-----------------
 
----
+- src/toolbelt — FastAPI local toolbelt (cursor, keyboard, Spotify, TE v2 stub, governance)
+- src/frontend — Next.js renderer, MirrorPanel component, static fallback UI
+- src/electron_app — Electron main + preload exposing window.electron.toolbeltCall
+- src/logs — runtime logs (toolbelt_actions.log)
+- docker-compose.ui.yml — compose for local UI + toolbelt + electron smoke run
+- docs/ — integration notes and supporting docs
 
-🚀 Why Lucy exists
+Environment variables
+---------------------
 
-Lucy is an opinionated, open-source AI orchestration platform purpose-built to prove safe, auditable, and resilient execution for autonomous systems. It was created because modern AI systems need more than policies — they need provable enforcement.
+- TOOLBELT_LOG_DIR — override toolbelt log directory (optional)
+- FEATURE_OS_INTEGRATION — set to 1/true to enable native OS automation (opt-in)
+- PORT — frontend port (default 3000)
 
-If you care about audit logging, zero-trust enforcement, and cryptographic verification, Lucy is for you. Lucy is different because it enforces a strict cryptographic invariant across decisions, audit logs, and execution permits. That invariant is the core of sovereignty:
+Quickstart — development
+-------------------------
 
-**DecisionToken → AuditReceipt → ExecutionPermit → Trusted Executor**
+1) Start the toolbelt (FastAPI)
 
-Every action is signed, chained, and verified. No execution may proceed without the entire cryptographic lineage.
+   cd src/toolbelt
+   python -m pip install -r requirements-dev.txt
+   python server.py
 
----
+   Toolbelt: <http://localhost:8001> (logs at src/logs/toolbelt_actions.log)
 
-✨ Highlights (hook + branding)
+2) Start the Next.js renderer (dev)
 
-- High-assurance AI orchestration for production-grade distributed systems
-- WASM sandboxing for untrusted policies and model-driven code
-- Cryptographic verification across audit, permit, and execution planes
-- Mutation testing and QC-of-QC to prevent silent regressions
-- Resilience engineering primitives: circuit breakers, self-tests, chaos injection
+   cd src/frontend
+   npm install
+   npm run dev
 
-Read on for diagrams, a quick demo, technical depth, and how to contribute.
+   Open <http://localhost:3000> — MirrorPanel is mounted on the root page.
 
----
+3) Optional: Run Electron for IPC testing
 
-🌐 Quick architecture (ASCII visual)
-┌─────────────────────────────┐
-│         Lucy OS             │
-│ Voice • UI • Workflows      │
-└──────────────┬──────────────┘
-               │
+   cd src/electron_app
+   npm install
+   npm start
 
-┌──────────────▼──────────────┐
-│        E.M.M.A Kernel       │
-│ Agents • Governance         │
-│ Recovery • Telemetry        │
-└──────────────┬──────────────┘
-               │
-┌──────────────▼──────────────┐
-│ Sovereign Execution Plane   │
-│ Decision Tokens             │
-│ Audit Receipts              │
-│ Execution Permits           │
-└──────────────┬──────────────┘
-               │
-┌──────────────▼──────────────┐
-│ Trusted Executor            │
-│ WASM • Sandbox              │
-└─────────────────────────────┘
-```
-				+------------------+      DecisionToken      +-------------+
- Client/Agent → |    Orchestrator  | ─────────────────────────▶ | SafeGuard   |
- (authenticated) | (auth + control) |                           +-------------+
-				 |                  |                                   |
-				 |  create permit    | ◀────────AuditReceipt──────────────┘
-				 |                  |                                   v
-				 +------------------+        ExecutionPermit        +-------------+
-												  +──────────────▶ | DataVault   |
-																   +-------------+
-																		|
-																		v
-																 +----------------+
-																 | Trusted        |
-																 | Executor (WASM)|
-																 +----------------+
-```
+   Electron loads the renderer and the renderer uses window.electron.toolbeltCall for IPC.
 
-Architecture summary: Authenticated client → Orchestrator (auth + policy) → SafeGuard (DecisionToken) → DataVault (AuditReceipt) → Orchestrator (ExecutionPermit) → Trusted Executor (WASM sandbox).
+Containerized quick smoke
+------------------------
 
----
+docker compose -f docker-compose.ui.yml up --build
 
-📣 SEO-friendly summary ([@scottymicfree x][Randy Webb @scottymicfree linkedin](https://github.com/scottymicfree))
+This starts toolbelt and frontend (plus an electron stub for smoke). For UI, run Electron locally.
 
-Lucy is an open-source sovereign AI orchestration system that implements zero-trust architecture, cryptographic verification, audit logging, WASM sandboxing, and mutation-tested QC pipelines. It is built for distributed systems, resilience engineering, and secure execution pipelines.
+Stable API reference
+--------------------
 
-Keywords: AI orchestration, WASM sandboxing, secure execution pipeline, distributed systems, resilience engineering, audit logging, sovereign AI, zero-trust architecture, mutation testing, cryptographic verification.
+- GET /health — service health
+- GET /governance/status — feature flags / opt-in status
+- POST /cursor/move — move cursor (stubbed when FEATURE_OS_INTEGRATION=0)
+- POST /cursor/click — click (stubbed)
+- POST /keyboard/type — type text (stubbed)
+- POST /spotify/control — media control (stubbed)
+- POST /te_v2/execute — TE v2 generator stub
+- POST /mirror/register — register mirrored browser instance
 
----
+Logging & DecisionTokens
+------------------------
 
-💡 Why Lucy matters
+Toolbelt logs single-line JSON entries (JSONL) to toolbelt_actions.log. Each action includes a decision_token (UUID) for traceability. Before production, replace UUIDs with signed DecisionTokens (Ed25519/JWKS) and store keys securely.
 
-Lucy gives you a provable control plane. Instead of trusting runtime behavior, you can cryptographically verify that enforcement steps ran in order and that no bypass was possible. This is essential for teams who must demonstrate compliance, auditability, or safety.
+Security & governance
+---------------------
 
-Lucy transforms policy enforcement into auditable evidence, not just runtime logs.
+- FEATURE_OS_INTEGRATION is disabled by default; enable only after auditing native automation and obtaining user consent.
+- Restrict the toolbelt API to localhost in production and prefer IPC (preload) for renderer interactions.
+- Add authentication/capability checks for multi-user scenarios.
 
----
+Testing & CI
+------------
 
-🔥 What makes Lucy unique
+Run unit tests:
 
-- Canonical JSON signing to prevent canonicalization attacks
-- DecisionToken → AuditReceipt → ExecutionPermit invariant enforced end-to-end
-- WASM-first sandbox: run untrusted policies without language lock-in
-- QC-of-QC mutation testing ensures tests detect intentional bypass attempts
-- Circuit breakers and chaos endpoints for hardened resilience engineering
+  pip install pytest
+  pytest -q
 
----
+In CI: run Python tests, JS lint/build, and inject signing keys via CI secrets (never commit private keys).
 
-👥 Who is Lucy for?
+Including README images you uploaded locally
+-----------------------------------------
 
-- Security engineers building provable AI systems
-- Platform teams running model-driven automation at scale
-- Researchers exploring sovereign AI and auditable autonomy
-- Compliance teams who require strong evidence of enforcement
+You referenced a local JPEG at:
 
-If you want a system you can prove, not just hope, Lucy was designed for you.
+  C:\\Users\\Randy Webb\\Desktop\\Os_lucy\\OS_Lucy's\\os_lucy's readme jpeg.jpeg
 
----
+To include it in this repository README:
 
-🎬 Show me something cool — quick demo
+1) Copy the file into the repo under docs/images with a safe filename (no spaces):
 
-1) Start the dev stack (example minimal services):
+   mkdir -p docs/images
+   copy "C:\\Users\\Randy Webb\\Desktop\\Os_lucy\\OS_Lucy's\\os_lucy's readme jpeg.jpeg" docs/images/os_lucys_readme.jpeg
 
-```bash
-docker-compose up -d datavault safeguard trusted-executor orchestrator
-```
+2) Commit and push the file. The README references docs/images/os_lucys_readme.jpeg and will display it on GitHub once pushed.
 
-2) Issue a guarded execution (replace <TOKEN> with a valid token):
+Example README image (place file at docs/images/os_lucys_readme.jpeg):
 
-```bash
-curl -X POST \
-  -H "Authorization: Bearer service:dev" \
-  -H "Content-Type: application/json" \
-  -d '{"wasm_module":"<BASE64_WASM>", "agent_id":"test-agent"}' \
-  http://localhost:8020/execute_wasm
-```
+![Lucy OS screenshot](docs/images/os_lucys_readme.jpeg)
 
-3) Observe the chain:
+Roadmap & next steps
+--------------------
 
-- SafeGuard → DecisionToken (signed)
-- DataVault → AuditReceipt (signed & chained)
-- Orchestrator → ExecutionPermit (signed)
-- Trusted Executor → verifies lineage and runs WASM in a sandbox
+- Implement signed DecisionTokens (Ed25519 + JWKS) and integrate trust registry
+- Replace TE v2 stub with gated multimodal generator and ResultReceipt signing
+- Add optional OS integrations (pyautogui) behind explicit opt-in and consent UI
+- Add production log rotation and secure storage for audit logs
 
-Share this demo: a single curl demonstrates the full cryptographic lineage.
+Production upgrades implemented
+------------------------------
 
----
+This repository now includes a focused production upgrade:
 
-🧠 Deep technical story (control-plane invariant)
+1) Signed DecisionTokens (Ed25519 + JWKS scaffold)
+   - Dev Ed25519 keys auto-generated under src/toolbelt/keys (dev only). In production mount keys via TOOLBELT_PRIV_KEY/TOOLBELT_PUB_RAW or inject via CI secrets.
+   - JWKS endpoint: GET /.well-known/jwks.json returns a minimal OKP/Ed25519 JWK for the public key.
+   - Each toolbelt call returns decision_token and decision_signature (base64). The server also logs the decision_token and signed flag.
 
-Lucy’s invariant is the backbone of the system. The chain enforces custody and prevents unauthorized execution:
+2) Consent UI + FEATURE_OS_INTEGRATION flow
+   - Renderer includes a consent modal (src/frontend/components/ConsentModal.jsx). Consent is stored via Electron in a JSON file (~/.lucy_consent.json by default) and written by the Electron main process.
+   - Toolbelt checks both FEATURE_OS_INTEGRATION env var and the consent file (path via LUCY_CONSENT_PATH) before allowing native integrations.
 
-- DecisionToken (SafeGuard): policy engine produces a canonical-signed token describing the decision (allow/deny), reasoning, scores, and metadata.
-- AuditReceipt (DataVault): append-only store computes payload hash, prev_hash, entry_hash, and returns a signed AuditReceipt bound to the ledger.
-- ExecutionPermit (Orchestrator): a signed document over DecisionToken || AuditReceipt || nonce || ttl. This is the authorization artifact for execution.
-- Trusted Executor: final gate that verifies orchestrator signature, embedded DecisionToken signature, embedded AuditReceipt signature, TTL, and nonce uniqueness before permitting WASM execution.
+3) Production-ready frontend Docker
+   - New multi-stage Dockerfile: src/frontend/Dockerfile.prod builds Next.js and produces a production image. docker-compose.ui.yml updated to use this Dockerfile for frontend service.
 
-If any piece is invalid, execution is denied (403). This creates an immutable chain between policy, audit, and execution.
+4) CI (GitHub Actions)
+   - .github/workflows/ci.yml runs toolbelt pytest, Next.js build, and a lightweight electron check on push/PR to main.
 
----
+5) Consistent decision_token type
+   - All decision_tokens are UUID4 strings. Update integrations to generate parseable tokens. Toolbelt enforces UUID format and rejects malformed tokens.
 
-🔒 Cryptographic boundaries & canonical JSON
+6) Enhanced health check
+   - GET /health now returns { up: true, version, id } fields. Includes simple DB and JWKS availability checks.
 
-Canonical JSON protects the signature surface:
+7) UI performance improvements
+   - React memoization and useCallback optimizations in the renderer. Reduced re-renders and improved input latency.
 
-- Sorting keys deterministically (sort_keys=true)
-- Using compact separators (separators=(",", ":"))
-- UTF-8 encoding and no extra whitespace
+8) README images
+   - Local image references were removed. Add images to the docs/images directory and reference them as needed.
 
-By enforcing canonicalization, Lucy prevents field reordering, whitespace injection, or signature wrapping attacks. Tests verify that signature verification breaks on any deviation from canonical form.
+How to use the JWKS and keys
+---------------------------
 
----
+- For local dev the server auto-generates a dev keypair and serves a minimal JWKS at <http://localhost:8001/.well-known/jwks.json>
+- For production:
+  - Generate and store an Ed25519 private key (PEM PKCS8) externally.
+  - Set TOOLBELT_PRIV_KEY to the absolute path of the private key on the deployment host.
+  - Set TOOLBELT_PUB_RAW to the raw public key bytes path (or keep the generated one and expose via JWKS).
 
-🧪 QC, QC‑of‑QC, and mutation testing
+Consent storage
+---------------
 
-Lucy’s test strategy is engineered for proof:
+- Default consent file path is the user's home folder: ~/.lucy_consent.json
+- Override path via LUCY_CONSENT_PATH environment variable (used by toolbelt to check consent).
 
-1. P0 verification suite: end-to-end assertions for DecisionToken → AuditReceipt → ExecutionPermit → Trusted Executor.
-2. QC suite: extensive negative-path tests (tampering, unreachable services, canonicalization, replay, TTL, actor propagation).
-3. QC-of-QC runner: git-based mutation tester that applies deterministic mutations (patches), runs QC, and fails the CI if any mutation escapes detection.
+Signature verification endpoint
+-----------------------------
 
-This staged approach ensures that if developers disable a signature, the CI fails. If they remove nonce checks, replay tests fail. QC-of-QC protects enforcement fidelity.
+- POST /verify accepts JSON { decision_token, decision_signature } and returns { valid: true/false } for debugging and governance tooling. Use this to validate JWT/JWS signatures emitted by the toolbelt.
 
----
+JWT DecisionTokens
+-------------------
 
-⚙️ Resilience engineering & distributed systems
+- DecisionTokens are now wrapped in a compact JWS (EdDSA) using the Ed25519 keypair. For backward compatibility the raw base64 signature is appended after a '::' separator. Verifiers should first attempt to verify the JWS and fall back to the raw signature if needed.
 
-Lucy is designed for real distributed deployments:
+System Status panel
+-------------------
 
-- Circuit breakers guard external dependencies (DataVault, SafeGuard, Trusted Executor)
-- Selftest endpoints for health and canary checks
-- Chaos endpoints for controlled fault injection
+- The renderer now includes a System Status panel showing toolbelt health, JWKS key count, consent status, FEATURE_OS_INTEGRATION status, and the last 5 log entries. It's at the right side of the MirrorPanel page.
 
-The platform integrates with Kubernetes and service mesh patterns and expects to be used in enterprise distributed systems.
+Log rotation
+------------
 
----
+- Toolbelt log files are rotated via RotatingFileHandler: 5MB per file, 5 backups. Adjust LOG_DIR or handler parameters via environment in production.
 
-🧭 Actor identity propagation
+Unified config loader
+---------------------
 
-Auth is enforced at ingress with Bearer tokens. The orchestrator extracts actor identity and propagates it via request.state.actor to SafeGuard and DataVault. Actor identity is embedded in DecisionToken, AuditReceipt, and ExecutionPermit so every signed artifact carries context for forensic review.
+- A shared config module (src/shared/config.py) exposes env, consent path, and helpers. Electron and the toolbelt use this module for consistent configuration.
 
----
+CI caching
+----------
 
-📈 Roadmap & what’s next
+- GitHub Actions now cache Python pip and Node/npm dependencies to speed CI runs. See .github/workflows/ci.yml for details.
 
-- Asymmetric signatures (PKI, key rotation)
-- Persistent nonce store (Redis) to support horizontal Trusted Executor instances
-- WASM policy marketplace (plugins and validators)
-- Formal verification of canonicalization and signing routines
-- Improved dashboards and compliance reporting
+License & support
+-----------------
 
----
-
-🤝 Contribute & join the movement
-
-Star this repo ⭐ — it helps Lucy surface to teams that need provable enforcement.
-
-Contributions:
-
-1. Fork the repo
-2. Create a feature branch
-3. Run tests & QC locally
-4. Open a PR and reference QC-of-QC checks
-
-We welcome contributions that improve cryptography, resilience, testing, and usability.
-
----
-
-📢 Social snippets
-
-Tweet-ready: "Lucy: cryptographically-verified AI orchestration with WASM sandboxing and mutation-tested guarantees. DecisionToken → AuditReceipt → ExecutionPermit → Trusted Executor. Sovereign AI, provable." #SovereignAI #WASM #AuditLogging
-
-LinkedIn-ready blurb: "Lucy provides a provable control plane for AI orchestration — cryptographic audit receipts, signed permits, and WASM sandboxing backed by mutation-tested CI. If you need auditability for autonomous systems, Lucy is built for you."
-
----
-
-⚠️ Callouts
-
-> High-assurance systems deserve mutation-resistant CI: QC-of-QC applies deterministic patches and ensures tests catch any weakening of cryptographic boundaries.
-
-> Lucy is designed to be auditable, provable, and verifiable — not merely plausible. If your team must show evidence to auditors or regulators, Lucy gives you the artifacts.
-
----
-
-LICENSE
-
-MIT — contributions welcome.
-
----
-
-Credits: Built for resilience engineers, security teams, and platform builders who demand provable guarantees.
+Add your LICENSE file. For issues, open an issue or contact the maintainer.

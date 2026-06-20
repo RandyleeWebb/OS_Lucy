@@ -1,0 +1,10 @@
+{
+  "compilerOptions":{
+    "target":"ES2022","module":"Node16","moduleResolution":"node16",
+    "lib":["ES2022","DOM","DOM.Iterable"],"jsx":"react-jsx",
+    "strict":true,"skipLibCheck":true,"esModuleInterop":true,
+    "allowSyntheticDefaultImports":true,"outDir":"./dist",
+    "rootDir":"./"
+  },
+  "include":["src","server.ts"]
+}

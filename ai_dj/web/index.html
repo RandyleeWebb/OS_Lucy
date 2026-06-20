@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lucy AI‑DJ Radio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+    <div class="logo">
+      <img src="../assets/logo.png" alt="Lucy AI‑DJ" />
+    </div>
+    <h1>Lucy AI‑DJ Radio</h1>
+    <div class="player-card glass">
+      <audio id="radio" controls preload="none">
+        <source src="http://localhost:8000/live.mp3" type="audio/mpeg" />
+        <source src="http://localhost:8000/live.opus" type="audio/ogg; codecs=opus" />
+        Your browser does not support the audio element.
+      </audio>
+    </div>
+    <p class="status" id="status">Connecting…</p>
+  </div>
+  <script>
+    const audio = document.getElementById('radio');
+    const status = document.getElementById('status');
+    audio.addEventListener('play', () => status.textContent = 'Playing');
+    audio.addEventListener('pause', () => status.textContent = 'Paused');
+    audio.addEventListener('error', () => status.textContent = 'Error loading stream');
+    // Auto‑play when ready (some browsers require user interaction)
+    audio.addEventListener('canplay', () => {
+      // Uncomment the next line to auto‑play (may be blocked by browsers)
+      // audio.play();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+[project]
+name = "lucy-vault_api"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "pydantic",
+    "prometheus-client",
+    "aiosqlite",
+    "psutil",
+    "redis",
+    "httpx"
+]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"

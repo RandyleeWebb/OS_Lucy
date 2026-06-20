@@ -1,0 +1,40 @@
+body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.hidden {
+    display: none !important;
+}
+
+#lucy-hud {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    background: rgba(10, 10, 15, 0.85);
+    border: 1px solid rgba(0, 255, 128, 0.3);
+    border-radius: 8px;
+    padding: 12px 20px;
+    color: white;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    transition: opacity 0.5s ease-in-out;
+}
+
+.now-playing {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.icon {
+    font-size: 1.2em;
+    color: #00ff80;
+}
+
+#track-name {
+    font-weight: 500;
+    font-size: 1em;
+    letter-spacing: 0.5px;
+}

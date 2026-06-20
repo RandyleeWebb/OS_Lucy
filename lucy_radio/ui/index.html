@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lucy Radio UI</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Hidden audio element for streaming -->
+    <audio id="lucy-audio-player" crossorigin="anonymous"></audio>
+
+    <!-- Optional HUD overlay for metadata, normally hidden unless requested -->
+    <div id="lucy-hud" class="hidden">
+        <div class="now-playing">
+            <span class="icon">🎵</span>
+            <span id="track-name">Lucy Radio Live</span>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

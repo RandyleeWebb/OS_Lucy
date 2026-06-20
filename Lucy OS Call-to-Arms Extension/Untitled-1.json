@@ -1,0 +1,54 @@
+{
+  "pack_name": "Lucy OS Call‑to‑Arms Extension",
+  "version": "Phase 4 Completion Snapshot",
+  "description": "Standalone extension bundle containing all Lucy OS battalion definitions and deployment status.",
+  "battalions": {
+    "Diagnostics": {
+      "status": "ACTIVE",
+      "phase": "1–2",
+      "role": "Systems Engineering Corps",
+      "responsibilities": ["Hardware probing","Container/service health","Incident detection","Recovery triggers"],
+      "endpoint": "/diagnostics",
+      "notes": "Stable, callable, fully integrated."
+    },
+    "ThreatIntelligence": {
+      "status": "ACTIVE",
+      "phase": "2",
+      "role": "Internal Security Corps",
+      "responsibilities": ["Event Bus ingestion","Risk scoring","SecurityMemory updates","Human‑approval loop"],
+      "endpoint": "/event and /security",
+      "notes": "Fully operational and integrated."
+    },
+    "Recovery": {
+      "status": "ACTIVE",
+      "phase": "3",
+      "role": "Emergency Response Corps",
+      "responsibilities": ["Boot Sentinel","Chain of Trust","Recovery Console","Safe Boot UI"],
+      "endpoint": "/boot_status",
+      "notes": "Stable and callable."
+    },
+    "Memory": {
+      "status": "FULLY IMPLEMENTED — NOT DEPLOYED",
+      "phase": "4",
+      "role": "Cognitive Memory Corps",
+      "subsystems": ["entity_extractor.py","graph_engine.py","embedding.py","pruning.py","retrieval.py","memory_engine.tick()"],
+      "responsibilities": ["Entity extraction","Semantic graph maintenance","Embedding generation","Causal edge creation","Memory pruning","Retrieval (FTS + vector + graph + RRF)","Tick‑cycle orchestration"],
+      "notes": "Tick not wired, no endpoints exposed, battalion armed but cold."
+    },
+    "Cognitive": {
+      "status": "NOT ACTIVE",
+      "phase": "5",
+      "role": "Strategic Reasoning Corps",
+      "responsibilities": ["Multi‑step reasoning","Planning","Self‑reflection","Autonomous task decomposition","Long‑term strategy"],
+      "notes": "Reserved for Phase 5."
+    }
+  },
+  "operational_doctrine": "Do not assume any battalion active unless explicitly marked ACTIVE. Memory Battalion must not be invoked until tick() is wired. Cognitive Battalion must not be referenced until Phase 5. All modules operate on real data only – no mocks, no cloud calls. UI must not request Memory Battalion endpoints until deployment is authorized.",
+  "deployment_readiness": {
+    "Diagnostics": {"callable": true},
+    "ThreatIntelligence": {"callable": true},
+    "Recovery": {"callable": true},
+    "Memory": {"callable": false},
+    "Cognitive": {"callable": false}
+  }
+}

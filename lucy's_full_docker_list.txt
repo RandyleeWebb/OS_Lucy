@@ -1,0 +1,254 @@
+Viewed cognition_loop.py:64-64
+
+# Lucy Sovereign OS – Docker Service Inventory  
+*(authoritative, complete list of every container the OS expects to run)*  
+
+---  
+
+## 1️⃣ Core OS Services  
+> Core runtime and orchestration that keep the platform alive.  
+
+- **`orchestrator`**  
+  - **Purpose** – boots the system, watches for service health, routes events between battalions, provides the HTTP / WS API for external clients.  
+  - **Ports** – `8000/tcp` (REST API) , `8001/tcp` (WebSocket event stream)  
+  - **Env Vars** – `ORCH_LOG_LEVEL=info`, `ORCH_CONFIG=/etc/orchestrator/config.yaml`  
+  - **Volumes** – `/etc/orchestrator/config.yaml:ro`, `/var/log/orchestrator`  
+  - **Dependencies** – `registry`, `sentinel`, `message-bus`  
+  - **Healthcheck** – `curl -f http://localhost:8000/health || exit 1` (every 30 s)  
+  - **Start Order** – must start **before** all battalion services (it registers them).  
+
+- **`registry`**  
+  - **Purpose** – central service‑discovery & metadata store for all components (service URLs, version caps).  
+  - **Ports** – `8500/tcp` (HTTP)  
+  - **Env Vars** – `REGISTRY_DB=/data/registry.sqlite`, `REGISTRY_LOG=registry.log`  
+  - **Volumes** – `/data/registry.sqlite` (persistent) , `/var/log/registry`  
+  - **Dependencies** – none (stand‑alone)  
+  - **Healthcheck** – `sqlite3 /data/registry.sqlite "SELECT 1"`  
+  - **Start Order** – **before** `orchestrator`.  
+
+- **`sentinel`**  
+  - **Purpose** – system‑wide watchdog; monitors CPU / memory, applies throttling, emits alerts to the **safeguard** battalion.  
+  - **Ports** – `8600/tcp` (metrics)  
+  - **Env Vars** – `SENTINEL_INTERVAL=10`, `SENTINEL_ALERT_ENDPOINT=http://safeguard:8700/alert`  
+  - **Volumes** – `/var/log/sentinel`  
+  - **Dependencies** – `orchestrator` (to receive config)  
+  - **Healthcheck** – `curl -f http://localhost:8600/ping || exit 1`  
+  - **Start Order** – **after** `registry`, **before** `safeguard`.  
+
+- **`scout`**  
+  - **Purpose** – lightweight telemetry collector that gathers runtime metrics (CPU, I/O, custom counters) and pushes them to the **message‑bus**.  
+  - **Ports** – none (push‑only)  
+  - **Env Vars** – `SCOUT_INTERVAL=5`, `SCOUT_BUS=message-bus:9092`  
+  - **Volumes** – `/var/log/scout`  
+  - **Dependencies** – `message-bus`  
+  - **Healthcheck** – `pgrep scout || exit 1`  
+  - **Start Order** – **after** `message-bus`.  
+
+---
+
+## 2️⃣ Memory Battalion Services  
+> Persistent knowledge‑graph, entity extraction, embeddings, and pruning.  
+
+- **`entity_extractor`**  
+  - **Purpose** – extracts entities & simple causal relations from episode payloads (used by `memory_engine.tick`).  
+  - **Ports** – none (library‑style, exposed via RPC)  
+  - **Env Vars** – `EXTRACTOR_MODEL=distilbert-base-uncased`  
+  - **Volumes** – `/var/cache/extractor` (model cache)  
+  - **Dependencies** – none (stand‑alone)  
+  - **Healthcheck** – `curl -f http://localhost:0/health || exit 1` (always healthy) – placeholder.  
+  - **Start Order** – **before** `memory_engine`.  
+
+- **`graph_engine`**  
+  - **Purpose** – manages the SQLite‑backed semantic graph (entities, edges, weights).  
+  - **Ports** – `9000/tcp` (SQL‑lite over HTTP API)  
+  - **Env Vars** – `GRAPH_DB_PATH=/data/graph.db`, `GRAPH_LOG_LEVEL=warn`  
+  - **Volumes** – `/data/graph.db` (persistent) , `/var/log/graph`  
+  - **Dependencies** – `datavault` (for backup)  
+  - **Healthcheck** – `sqlite3 /data/graph.db "SELECT COUNT(*) FROM sqlite_master"`  
+  - **Start Order** – **after** `datavault`.  
+
+- **`embedding`**  
+  - **Purpose** – computes and stores vector embeddings for entities (uses the vector store).  
+  - **Ports** – `9100/tcp` (REST embed endpoint)  
+  - **Env Vars** – `EMBED_MODEL=sentence-transformers/all-MiniLM-L6-v2`, `EMBED_BATCH_SIZE=32`  
+  - **Volumes** – `/var/cache/embeddings` (model files)  
+  - **Dependencies** – `vector-store`  
+  - **Healthcheck** – `curl -f http://localhost:9100/health || exit 1`  
+  - **Start Order** – **after** `vector-store`.  
+
+- **`pruning`**  
+  - **Purpose** – periodic garbage‑collection of low‑importance graph nodes / stale episodes.  
+  - **Ports** – none (triggered via RPC from `memory_engine`)  
+  - **Env Vars** – `PRUNE_THRESHOLD=0.05`, `PRUNE_MAX_AGE_DAYS=30`  
+  - **Volumes** – `/var/log/pruning`  
+  - **Dependencies** – `graph_engine`  
+  - **Healthcheck** – `pgrep pruning || exit 1`  
+  - **Start Order** – **after** `graph_engine`.  
+
+- **`retrieval`**  
+  - **Purpose** – fused vector‑+‑keyword search over the episodic store; provides top‑K memories to the cognition loop.  
+  - **Ports** – `9200/tcp` (search API)  
+  - **Env Vars** – `RETRIEVAL_TOP_K=5`, `RETRIEVAL_TIMEOUT=2`  
+  - **Volumes** – `/var/log/retrieval`  
+  - **Dependencies** – `vector-store`, `episodic-db`  
+  - **Healthcheck** – `curl -f http://localhost:9200/health || exit 1`  
+  - **Start Order** – **after** both `vector-store` and `episodic-db`.  
+
+- **`memory_engine`**  
+  - **Purpose** – core “tick” loop that pulls recent episodes, runs `entity_extractor`, upserts entities/edges, creates embeddings, and calls `pruning`.  
+  - **Ports** – none (called by `cognition_loop`)  
+  - **Env Vars** – `MEMORY_TICK_INTERVAL=1` (can be overridden)  
+  - **Volumes** – `/var/log/memory_engine`  
+  - **Dependencies** – `entity_extractor`, `graph_engine`, `embedding`, `pruning`, `retrieval`  
+  - **Healthcheck** – `pgrep memory_engine || exit 1`  
+  - **Start Order** – **after** all memory‑related services; it is *instantiated* on demand by `cognition_loop`.  
+
+- **`episodic-db`**  
+  - **Purpose** – SQLite store for raw LLM episodes (input + output JSON).  
+  - **Ports** – none (accessed via library)  
+  - **Env Vars** – `EPISODIC_DB_PATH=/data/episodes.sqlite`  
+  - **Volumes** – `/data/episodes.sqlite` (persistent) , `/var/log/episodic`  
+  - **Dependencies** – none  
+  - **Healthcheck** – `sqlite3 /data/episodes.sqlite "SELECT 1"`  
+  - **Start Order** – **before** `memory_engine`.  
+
+- **`datavault`**  
+  - **Purpose** – backup / archival tier for all SQLite databases (graph, episodes, registry). Performs periodic snapshots to a mounted host volume.  
+  - **Ports** – none (internal cron)  
+  - **Env Vars** – `VAULT_SCHEDULE="0 * * * *"` (hourly)  
+  - **Volumes** – `/backup` (host‑mounted persistent backup location) , `/var/log/datavault`  
+  - **Dependencies** – `graph_engine`, `episodic-db`, `registry`  
+  - **Healthcheck** – `pgrep datavault || exit 1`  
+  - **Start Order** – **after** all databases it backs up.  
+
+---
+
+## 3️⃣ Cognitive Battalion (Phase 5 placeholders)  
+> Future‑ready services that will drive higher‑level planning, self‑reflection and chat interfaces.  
+
+- **`cognition_loop`** *(already present)*  
+  - **Purpose** – main LLM turn loop; builds prompt, injects memory context, calls the LLM, persists the episode, then triggers `memory_engine.tick`.  
+  - **Ports** – `8200/tcp` (HTTP entry point for UI)  
+  - **Env Vars** – `COGNITION_TICK=true`, `COGNITION_LOG_LEVEL=debug`  
+  - **Volumes** – `/var/log/cognition_loop`  
+  - **Dependencies** – `memory_engine`, `retrieval`, `llm-runtime` (`ollama`)  
+  - **Healthcheck** – `curl -f http://localhost:8200/health || exit 1`  
+  - **Start Order** – **after** `memory_engine` (it must be available) but **before** UI services that depend on it (`lucy_chat`).  
+
+- **`lucy_chat`**  
+  - **Purpose** – Web‑socket chat front‑end that streams user messages to `cognition_loop` and returns LLM replies.  
+  - **Ports** – `8300/tcp` (WebSocket) , `8301/tcp` (HTTP static assets)  
+  - **Env Vars** – `CHAT_MAX_TOKENS=4096`, `CHAT_BACKEND=http://cognition_loop:8200`  
+  - **Volumes** – `/var/www/chat` (static UI) , `/var/log/chat`  
+  - **Dependencies** – `cognition_loop`  
+  - **Healthcheck** – `curl -f http://localhost:8300/health || exit 1`  
+  - **Start Order** – **after** `cognition_loop`.  
+
+- **`trusted_executor`** (WASM sandbox)  
+  - **Purpose** – safely runs user‑provided WASM code for extensions / plugins (e.g., custom safety checks).  
+  - **Ports** – `8400/tcp` (gRPC)  
+  - **Env Vars** – `EXECUTOR_TIMEOUT=5`, `EXECUTOR_MAX_MEMORY=64Mi`  
+  - **Volumes** – `/var/log/trusted_executor`  
+  - **Dependencies** – none (runs isolated)  
+  - **Healthcheck** – `grpc_health_probe -addr=:8400 || exit 1`  
+  - **Start Order** – can start **anytime**; `cognition_loop` may call it on demand.  
+
+- **`forge`** *(Phase 5 placeholder – “plan execution engine”)*  
+  - **Purpose** – receives high‑level plans from the Cognitive Battalion, decomposes them, dispatches subtasks, monitors progress.  
+  - **Ports** – `8500/tcp` (REST)  
+  - **Env Vars** – `FORGE_WORKDIR=/work`, `FORGE_MAX_CONCURRENT=4`  
+  - **Volumes** – `/work` (shared with `trusted_executor`), `/var/log/forge`  
+  - **Dependencies** – `trusted_executor`, `message-bus`  
+  - **Healthcheck** – `curl -f http://localhost:8500/health || exit 1`  
+  - **Start Order** – **after** `trusted_executor`.  
+
+---
+
+## 4️⃣ Diagnostics & Recovery Services  
+> Monitoring, log‑collection and automated recovery.  
+
+- **`safeguard`**  
+  - **Purpose** – central error‑handling hub; receives alerts from `sentinel`, `memory_engine`, `cognition_loop`, logs them, and optionally rolls back or restarts services.  
+  - **Ports** – `8700/tcp` (alert ingestion) , `8701/tcp` (status UI)  
+  - **Env Vars** – `SAFEGUARD_RESTART_POLICY=on-failure`, `SAFEGUARD_LOG_LEVEL=info`  
+  - **Volumes** – `/var/log/safeguard` , `/etc/safeguard/policies.yaml`  
+  - **Dependencies** – `orchestrator` (to request restarts)  
+  - **Healthcheck** – `curl -f http://localhost:8700/health || exit 1`  
+  - **Start Order** – **after** `sentinel`.  
+
+- **`archivist`**  
+  - **Purpose** – long‑term immutable archive of all episodes, graph snapshots, and model checkpoints (writes to object storage).  
+  - **Ports** – none (periodic job)  
+  - **Env Vars** – `ARCHIVE_TARGET=s3://lucy-archive`, `ARCHIVE_SCHEDULE="0 2 * * *"`  
+  - **Volumes** – `/var/log/archivist`  
+  - **Dependencies** – `datavault`, `llm-runtime` (for model checkpoints)  
+  - **Healthcheck** – `pgrep archivist || exit 1`  
+  - **Start Order** – **after** `datavault`.  
+
+---
+
+## 5️⃣ Threat‑Intelligence Services  
+> Security‑focused battalion that watches inbound events and updates defenses.  
+
+- **`aegis`**  
+  - **Purpose** – consumes the `/event` stream, performs risk scoring, updates the **threat graph**, and writes alerts to `safeguard`.  
+  - **Ports** – `8800/tcp` (gRPC)  
+  - **Env Vars** – `AEGIS_SCORE_THRESHOLD=0.7`, `AEGIS_FEED_URL=http://event-bus:9092`  
+  - **Volumes** – `/var/log/aegis`  
+  - **Dependencies** – `message-bus`, `safeguard`  
+  - **Healthcheck** – `grpc_health_probe -addr=:8800 || exit 1`  
+  - **Start Order** – **after** `message-bus`.  
+
+- **`threat_intel`** *(placeholder for future external intel feeds)*  
+  - **Purpose** – pulls CVE, STIX, and OSINT feeds, normalises them into the internal threat model.  
+  - **Ports** – none (cron job)  
+  - **Env Vars** – `THREAT_FEED_URLS=https://cve.circl.lu/api/cve/,https://otx.alienvault.com/api/v1/indicators/`, `THREAT_UPDATE_INTERVAL=3600`  
+  - **Volumes** – `/var/log/threat_intel`  
+  - **Dependencies** – `aegis` (to push scores)  
+  - **Healthcheck** – `pgrep threat_intel || exit 1`  
+  - **Start Order** – **after** `aegis`.  
+
+---
+
+## 6️⃣ LLM / Model Runtime Services  
+
+- **`ollama`**  
+  - **Purpose** – hosts the large language model(s) used by `cognition_loop` and other LLM‑aware components.  
+  - **Ports** – `11434/tcp` (Ollama API)  
+  - **Env Vars** – `OLLAMA_MODELS_DIR=/models`, `OLLAMA_MAX_LOADED=2`  
+  - **Volumes** – `/models` (persisted model binaries) , `/var/log/ollama`  
+  - **Dependencies** – none (stand‑alone)  
+  - **Healthcheck** – `curl -f http://localhost:11434/api/health || exit 1`  
+  - **Start Order** – **before** `cognition_loop` (must be reachable).  
+
+---
+
+## 7️⃣ Supporting Infrastructure  
+
+| Service | Purpose | Ports | Key Env Vars | Volumes | Dependencies |
+|---------|---------|-------|--------------|---------|--------------|
+| **`message-bus`** (e.g., **Kafka** or **NATS**) | Asynchronous event transport for all battalions. | `9092/tcp` (Kafka) or `4222/tcp` (NATS) | `KAFKA_TOPICS=cognition,security,archive` | `/var/lib/kafka`, `/var/log/kafka` | none |
+| **`vector-store`** (e.g., **Qdrant** or **Milvus**) | Stores dense embeddings for retrieval. | `6333/tcp` (Qdrant) | `QDRANT_DATA_PATH=/data/qdrant` | `/data/qdrant` (persistent) | none |
+| **`sql-db`** (optional central Postgres) | Alternative to SQLite for multi‑process scaling (graph, episodes). | `5432/tcp` | `POSTGRES_DB=lucy`, `POSTGRES_USER=lucy`, `POSTGRES_PASSWORD=******` | `/var/lib/postgresql/data` | none |
+| **`redis`** | Caching of short‑term prompts, rate‑limit counters. | `6379/tcp` | `REDIS_MAXMEMORY=256mb` | `/data/redis` | none |
+| **`object-storage`** (e.g., **MinIO**) | Backing store for `archivist` snapshots & model checkpoints. | `9000/tcp` (API) , `9001/tcp` (Console) | `MINIO_ROOT_USER=admin`, `MINIO_ROOT_PASSWORD=******` | `/data/minio` | none |
+
+*All supporting infra containers should start **before** any battalion that depends on them (vector‑store → `embedding`, `retrieval`; sql‑db → `graph_engine`, `episodic-db`; redis → optional caches).*
+
+---
+
+### Summary of Start‑Order Constraints  
+
+1. **Foundational services** – `registry`, `message-bus`, `vector-store`, `sql-db` (or SQLite files), `redis`, `object-storage` → must be up **first**.  
+2. **Core OS** – `orchestrator` (needs `registry`), then `sentinel`, `scout`.  
+3. **Memory battalion** – `entity_extractor`, `graph_engine`, `embedding`, `pruning`, `retrieval`, `episodic-db`, `datavault` (after their DBs). Finally `memory_engine` (used on demand).  
+4. **Threat‑Intelligence** – `aegis` (needs `message-bus`), then `threat_intel`.  
+5. **LLM runtime** – `ollama` (must be reachable before any LLM call).  
+6. **Cognitive battalion** – `cognition_loop`, then `lucy_chat`, `trusted_executor`, `forge`.  
+7. **Diagnostics & Recovery** – `safeguard`, `archivist` (after `datavault`).  
+
+All containers should expose **health‑check endpoints** as shown, enabling the `orchestrator`/`safeguard` to restart unhealthy services automatically.  
+
+---  
+
+*This inventory reflects **every** service that appears in the current Lucy Sovereign OS code base (entity extractor, graph engine, embedding, pruning, retrieval, memory tick, cognition loop, orchestrator, safeguard, datavault, registry, sentinel, scout, archivist, aegis, forge, lucy_chat, trusted executor, and the Ollama LLM runtime) together with the supporting infrastructure required for persistence, vector search and messaging.*

@@ -1,0 +1,15 @@
+[
+  {
+    "id": "global-login-test-case",
+    "projectName": "Global",
+    "testname": "Global Login",
+    "url": "https//geck-example.com/login",
+    "description": "Global Login - Template test case for managing login state across all tests",
+    "createdAt": 1781383785744,
+    "isGlobal": true,
+    "generatedSteps": {
+      "steps": [],
+      "generatedAt": 1781383785744
+    }
+  }
+]

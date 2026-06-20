@@ -1,0 +1,41 @@
+{
+  "manifestVersion": "1.0.0",
+  "timestamp": "2026-05-23T02:26:00.619Z",
+  "helixVersion": "3.0.0-Security-Immutable",
+  "project": {
+    "id": "default",
+    "name": "Llama-3-FineTune",
+    "model": "Llama-3-8B-Base"
+  },
+  "files": {
+    "README.md": {
+      "sizeBytes": 294,
+      "sha256": "sha256-000000007437c7bb0000000e12c12fa5"
+    },
+    "INSTALL.md": {
+      "sizeBytes": 318,
+      "sha256": "sha256-000000002c33bce5000000055a43dfbb"
+    },
+    "start.bat": {
+      "sizeBytes": 66,
+      "sha256": "sha256-000000004051bae200000007c9e5a15e"
+    },
+    "setup.ps1": {
+      "sizeBytes": 1167,
+      "sha256": "sha256-000000003861c08200000006d3d64fbe"
+    },
+    "setup.sh": {
+      "sizeBytes": 716,
+      "sha256": "sha256-000000005fa21c3b0000000b94a16b25"
+    }
+  },
+  "dependencies": {
+    "package.json": {
+      "dependencies": {
+        "jszip": "^3.10.1",
+        "lucide-react": "^0.300.0",
+        "vite": "^5.0.0"
+      }
+    }
+  }
+}

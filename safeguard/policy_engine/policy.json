@@ -1,0 +1,6 @@
+{
+  "max_tokens": 4096,
+  "forbidden_tools": ["shell.reverse", "sql.drop"],
+  "forbidden_hosts": ["*.onion", "10.*.*.*"],
+  "forbidden_actions": ["system.halt", "system.format"]
+}

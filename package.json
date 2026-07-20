@@ -16,7 +16,7 @@
     "@lancedb/lancedb": "^0.30.0",
     "@tailwindcss/vite": "^4.0.0",
     "@vitejs/plugin-react": "^4.3.0",
-    "axios": "^1.7.2",
+    "axios": "^1.18.0",
     "better-sqlite3": "^11.8.0",
     "express": "^4.19.2",
     "firebase-admin": "^14.0.0",

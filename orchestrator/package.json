@@ -9,7 +9,7 @@
     "dev": "ts-node src/index.ts"
   },
   "dependencies": {
-    "express": "^4.19.0",
+    "express": "^5.2.1",
     "prom-client": "^14.1.0",
     "uuid": "^9.0.1"
   },
